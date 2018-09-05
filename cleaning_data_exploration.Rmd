@@ -1,0 +1,69 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(readxl)
+```
+
+
+```{r}
+df <- read_excel("mbta.xlsx", skip = 1)
+df
+str(df)
+```
+
+- First column just contains id's, can be removed. 
+- Different modes should be their own columns.
+- Each current year-month column should be an attribute of each record, not their own columns. 
+- Row 1, 7 and 11 are aggregates, we want the raw data only so these can be removed.
+
+```{r}
+df <- df %>%
+  select(-starts_with("X")) %>%
+  filter(mode != "All Modes by Qtr" & mode != "Pct Chg / Yr" & mode != "TOTAL") %>%
+  gather(year_month, thou_riders, -mode) %>%
+  mutate(thou_riders = as.numeric(thou_riders)) %>%
+  spread(mode, thou_riders) %>%
+  separate(year_month, c("year", "month")) %>%
+  mutate(year = as.integer(year), month = as.integer(month))
+
+```
+
+I also split up the year and month columns and converted them to numeric values. The number of riders per month was also converted to being numeric before it was spread across the different modes. 
+
+We now have inconsistant column names, some are uppercase, some lower case and there are spaces. Let's fix this.
+
+```{r}
+names(df) <- df %>%
+  names() %>%
+  tolower() %>% 
+  str_replace(" ", "_")
+
+```
+
+```{r}
+df
+```
+
+
+Let's check for any outliers.
+
+```{r}
+summary(df)
+```
+
+`boat` appears to have an unusual maximum value. This could be a data entry error. It should probably be 4. Let's change this.
+
+```{r}
+i <- which(df$boat > 30)
+df$boat[i] <- 4
+  
+```
+
+```{r}
+summary(df)
+```
+
